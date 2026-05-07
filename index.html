@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極速記帳 App</title>
+    
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-color: #f0f2f5; 
+            --text-color: #333; 
+            --text-muted: #777; 
+            --card-bg: #ffffff; 
+            --card-shadow: rgba(0,0,0,0.06); 
+            --border-color: #e5e7eb; 
+            --nav-bg: #ffffff; 
+            --input-bg: #f9fafb; 
+            --highlight-bg: #f3f4f6;
+            --danger-bg: #dc3545; --danger-text: #fff; --danger-text-color: #dc3545;
+            --star-color: #ffc107; --star-empty: #e0e0e0;
+            --accent-color: #0066cc; 
+            --btn-sec-bg: #6c757d; --btn-sec-text: #fff;
+            --score-bg: #fffbeb; --score-text: #d97706; --score-border: rgba(217, 119, 6, 0.3);
+            --inner-ring: rgba(0, 0, 0, 0.15); 
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212; --text-color: #e0e0e0; --text-muted: #aaa;
+            --card-bg: #1e1e1e; --card-shadow: rgba(0,0,0,0.5); --border-color: #333;
+            --nav-bg: #1e1e1e; --input-bg: #2c2c2c; --highlight-bg: #2a2a2a;
+            --danger-bg: #a71d2a; --danger-text: #e0e0e0; --danger-text-color: #ff6b6b;
+            --star-color: #ffca28; --star-empty: #444;
+            --accent-color: #4dabf7; 
+            --btn-sec-bg: #444; --btn-sec-text: #e0e0e0;
+            --score-bg: #332b00; --score-text: #ffca28; --score-border: rgba(255, 202, 40, 0.3);
+            --inner-ring: rgba(255, 255, 255, 0.2); 
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; overflow-x: hidden; touch-action: pan-y; transition: background-color 0.3s, color 0.3s; }
+        .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @keyframes highlightFlash { 
+            0% { transform: scale(1); background-color: var(--card-bg); box-shadow: 0 0 0 1px var(--border-color), 0 2px 4px var(--card-shadow); } 
+            15% { transform: scale(1.05); background-color: var(--highlight-bg); box-shadow: 0 0 0 1px var(--border-color), 0 12px 28px rgba(0,0,0,0.2); } 
+            70% { transform: scale(1.05); background-color: var(--highlight-bg); box-shadow: 0 0 0 1px var(--border-color), 0 12px 28px rgba(0,0,0,0.2); } 
+            100% { transform: scale(1); background-color: var(--card-bg); box-shadow: 0 0 0 1px var(--border-color), 0 2px 4px var(--card-shadow); } 
+        }
+        .highlight-flash { z-index: 100 !important; }
+        .highlight-flash .record-content { animation: highlightFlash 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--nav-bg); display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); z-index: 1000; transition: background-color 0.3s; }
+        .nav-item { flex: 1; text-align: center; padding: 15px 0; cursor: pointer; font-weight: bold; color: var(--text-muted); font-size: 13px; transition: color 0.2s;}
+        .nav-item.active { color: var(--accent-color); border-top: 3px solid var(--accent-color); margin-top: -1px; }
+
+        input:not([type="range"]):not([type="checkbox"]):not([type="color"]) { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; background-color: var(--input-bg); color: var(--text-color); transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+        
+        button { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; background-color: var(--accent-color); color: white; border: none; font-weight: bold; cursor: pointer; transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1), filter 0.1s, background-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); transform: translateY(0); }
+        button:active { transform: scale(0.96) translateY(2px); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); filter: brightness(0.9); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; filter: none !important; }
+        
+        .btn-warning { background-color: #ffc107 !important; color: #333 !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); }
+        .btn-danger { background-color: var(--danger-bg); color: var(--danger-text); width: auto; margin: 0; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); font-size: 14px; }
+        .btn-secondary { background: var(--btn-sec-bg) !important; color: var(--btn-sec-text) !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); }
+        .btn-success-state { background-color: #28a745 !important; color: #fff !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); }
+
+        input[type="color"] { border: none; border-radius: 8px; cursor: pointer; padding: 0; background: transparent; }
+
+        details.date-picker-details { margin-bottom: 15px; background: var(--card-bg); padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; }
+        details.date-picker-details summary { font-size: 14px; color: var(--text-muted); cursor: pointer; outline: none; font-weight: bold; user-select: none; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        details.date-picker-details summary::-webkit-details-marker { display: none; }
+        details.date-picker-details summary::after { content: '▼'; font-size: 12px; transition: transform 0.2s; color: var(--text-muted); }
+        details[open].date-picker-details summary::after { transform: rotate(180deg); }
+        .time-input-group { display: flex; gap: 8px; margin-top: 15px; margin-bottom: 0; }
+        .time-input-group input { margin-bottom: 0; text-align: center; padding: 12px 5px; }
+
+        .custom-select { position: relative; width: 100%; margin-bottom: 15px; font-size: 16px; z-index: 1; }
+        .custom-select.inline { width: auto; margin-bottom: 0; display: inline-block; font-size: 13px; min-width: 0; }
+        .select-selected { background-color: var(--input-bg); padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; user-select: none; position: relative; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .select-selected::after { content: ''; position: absolute; right: 15px; top: 18px; width: 0; height: 0; border: 6px solid transparent; border-top-color: var(--text-muted); transition: transform 0.3s; }
+        .select-selected.select-arrow-active::after { transform: rotate(180deg); top: 12px; }
+        .select-items { position: absolute; background-color: var(--card-bg); top: 100%; left: 0; right: 0; border: 1px solid var(--border-color); border-radius: 10px; margin-top: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); max-height: 200px; overflow-y: auto; opacity: 1; transition: opacity 0.2s, transform 0.2s; z-index: 9999; }
+        .select-items.select-up { top: auto !important; bottom: 100% !important; margin-top: 0 !important; margin-bottom: 5px !important; box-shadow: 0 -8px 24px rgba(0,0,0,0.25) !important; }
+        .select-hide { display: none; opacity: 0; pointer-events: none; }
+        .select-items div { padding: 12px; cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-color); display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .select-items div:active { background-color: var(--highlight-bg); }
+        .cat-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: inset 0 0 0 1px var(--inner-ring); }
+
+        .custom-select.inline .select-selected { padding: 6px 22px 6px 8px; border-radius: 6px; background: var(--input-bg); font-weight: bold; border: 1px solid var(--border-color); height: 34px; box-sizing: border-box; display: flex; align-items: center; }
+        .custom-select.inline .select-selected::after { right: 6px; top: 14px; border-width: 4px; }
+        .custom-select.inline .select-selected.select-arrow-active::after { top: 10px; }
+        .custom-select.inline .select-items { min-width: 120px; left: auto; right: 0; font-size: 14px; }
+
+        .autofill-box { position: absolute; width: calc(100% - 40px); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; z-index: 100; box-shadow: 0 8px 16px rgba(0,0,0,0.2); margin-top: -10px; overflow: hidden; }
+        .autofill-box div { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; font-size: 14px; color: var(--text-color); display: flex; justify-content: space-between; }
+        .autofill-box div:active { background-color: var(--highlight-bg); }
+
+        .star-rating { display: inline-flex; gap: 4px; font-size: 20px; color: var(--star-empty); user-select: none; }
+        .star-rating span { cursor: pointer; transition: transform 0.1s, color 0.2s; }
+        .star-rating span:active { transform: scale(1.2); }
+        .star-rating span.active { color: var(--star-color); }
+
+        .dual-slider-container { position: relative; width: 100%; height: 40px; display: flex; align-items: center; margin-bottom: 15px;}
+        .dual-slider-track { position: absolute; width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; }
+        .dual-slider-fill { position: absolute; height: 6px; background: var(--accent-color); border-radius: 3px; z-index: 2; }
+        .dual-slider-container input[type="range"] { position: absolute; width: 100%; -webkit-appearance: none; background: none; pointer-events: none; z-index: 3; margin: 0; }
+        .dual-slider-container input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: all; width: 24px; height: 24px; background: var(--card-bg); border: 2px solid var(--accent-color); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer;}
+        
+        .stat-card { background: var(--card-bg); padding: 20px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 8px var(--card-shadow); border: 1px solid var(--border-color); }
+        .donut-container { position: relative; width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .donut-inner { width: 65px; height: 65px; background: var(--card-bg); border-radius: 50%; position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); text-align: center; }
+
+        .record-card { position: relative; background: transparent; border-radius: 12px; margin-bottom: 12px; display: flex; user-select: none; z-index: 1; overflow: hidden; }
+        .record-delete-action { position: absolute; top: 0; right: 0; height: 100%; width: 80px; display: flex; align-items: center; justify-content: center; background: #dc3545; color: white; font-weight: bold; z-index: 1; border-radius: 0 12px 12px 0; box-shadow: inset 2px 0 5px rgba(0,0,0,0.15); }
+        
+        .record-content { position: relative; background: var(--card-bg); border-left: 5px solid var(--accent-color); width: 100%; box-sizing: border-box; z-index: 2; border-radius: 12px; transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), background-color 0.5s; box-shadow: 0 0 0 1px var(--border-color), 0 2px 4px var(--card-shadow); }
+        
+        .record-display { padding: 15px; cursor: pointer; transition: background 0.2s; border-radius: 12px; }
+        .record-display:active { background: var(--highlight-bg); }
+        .record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: nowrap; }
+        .record-meta { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+        
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+        .badge-score { background: var(--score-bg); color: var(--score-text); border: 1px solid var(--score-border); max-width: none; }
+        .badge-score.unrated { background: var(--highlight-bg); color: var(--text-muted); border: 1px solid var(--border-color); }
+
+        .record-edit-panel { display: none; background: var(--highlight-bg); padding: 12px 15px; border-top: 1px solid var(--border-color); align-items: center; justify-content: space-between; border-radius: 0 0 12px 12px; flex-wrap: nowrap; gap: 10px;}
+        .record-edit-panel.show { display: flex; }
+
+        .lock-btn { width: auto; background: var(--card-bg); border: 1px solid var(--border-color); padding: 6px 12px; margin: 0; font-size: 16px; color: var(--text-color); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1); font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 4px var(--card-shadow); }
+        .lock-btn:active { transform: scale(0.92) translateY(2px); box-shadow: 0 1px 2px var(--card-shadow); filter: brightness(0.9); }
+        .lock-btn.unlocked { opacity: 1; border-color: var(--accent-color); color: var(--accent-color);}
+
+        .budget-progress-bg { width: 100%; height: 10px; background: var(--border-color); border-radius: 5px; overflow: hidden; margin-top: 10px; }
+        .budget-progress-fill { height: 100%; background: #28a745; transition: width 0.3s, background-color 0.3s; }
+        
+        .bar-chart-container { display: flex; justify-content: space-between; align-items: flex-end; height: 140px; padding-top: 20px; border-top: 1px solid var(--border-color); margin-top: 20px; gap: 2px; position: relative; }
+        .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }
+        .bar-track { width: 100%; max-width: 18px; height: 90px; background: transparent; position: relative; }
+        .bar-fill { position: absolute; bottom: 0; width: 100%; background: var(--accent-color); opacity: 0.85; border-radius: 2px; transition: height 0.3s; }
+        .bar-label-top { font-size: 9px; color: var(--text-muted); margin-bottom: 2px; height: 12px; text-align: center; overflow: hidden; }
+        .bar-label-bottom { font-size: 10px; color: var(--text-muted); margin-top: 6px; height: 14px; white-space: nowrap; }
+
+        .lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.2s; touch-action: none; }
+        .pin-dots { display: flex; gap: 15px; margin: 30px 0; height: 20px; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--text-muted); transition: background 0.1s; }
+        .pin-dot.filled { background: var(--text-color); border-color: var(--text-color); }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 280px; }
+        .keypad-btn { width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--card-bg); font-size: 28px; font-weight: bold; color: var(--text-color); display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; box-shadow: 0 4px 6px var(--card-shadow); transition: transform 0.1s, box-shadow 0.1s, filter 0.1s; }
+        .keypad-btn:active { transform: scale(0.92) translateY(2px); box-shadow: 0 1px 2px var(--card-shadow); filter: brightness(0.9); background: var(--highlight-bg); }
+        .pin-input-secure { -webkit-text-security: disc; font-family: monospace; letter-spacing: 4px; text-align: center; font-size: 20px; }
+        .text-nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="lockScreen" class="lock-screen" style="display: none;">
+        <h2 id="lockTitle" style="color: var(--text-color); margin: 0;">請輸入密碼解鎖</h2>
+        <div class="pin-dots" id="pinDots"></div>
+        <div class="keypad">
+            <button class="keypad-btn" onpointerdown="pressPin('1')">1</button>
+            <button class="keypad-btn" onpointerdown="pressPin('2')">2</button>
+            <button class="keypad-btn" onpointerdown="pressPin('3')">3</button>
+            <button class="keypad-btn" onpointerdown="pressPin('4')">4</button>
+            <button class="keypad-btn" onpointerdown="pressPin('5')">5</button>
+            <button class="keypad-btn" onpointerdown="pressPin('6')">6</button>
+            <button class="keypad-btn" onpointerdown="pressPin('7')">7</button>
+            <button class="keypad-btn" onpointerdown="pressPin('8')">8</button>
+            <button class="keypad-btn" onpointerdown="pressPin('9')">9</button>
+            <div style="visibility: hidden;"></div>
+            <button class="keypad-btn" onpointerdown="pressPin('0')">0</button>
+            <button class="keypad-btn" onpointerdown="deletePin()" style="font-size: 24px;">⌫</button>
+        </div>
+    </div>
+
+    <div id="tab-input" class="tab-content active">
+        <h2 style="margin-top: 0;">極速記帳</h2>
+        
+        <input type="number" id="amount" inputmode="numeric" placeholder="金額 (必填)">
+        
+        <div style="position: relative;">
+            <input type="text" id="itemName" placeholder="消費項目名稱 (必填)" oninput="handleAutoFill()" autocomplete="off">
+            <div id="autoFillBox" class="autofill-box select-hide"></div>
+        </div>
+        
+        <div class="custom-select" id="inputCatContainer"></div>
+        
+        <details class="date-picker-details" id="timeDetails">
+            <summary>🕒 編輯消費時間 (預設為當下)</summary>
+            <div class="time-input-group">
+                <input type="number" id="inputYear" inputmode="numeric" placeholder="年" style="flex: 1.2;">
+                <input type="number" id="inputMMDD" inputmode="numeric" placeholder="月日" style="flex: 1.2;">
+                <input type="number" id="inputTime" inputmode="numeric" placeholder="時間" style="flex: 1;">
+            </div>
+        </details>
+        <button id="saveBtn" onclick="handleSaveClick(this)">立即儲存</button>
+    </div>
+
+    <div id="tab-stats" class="tab-content">
+        <h2>結算報表</h2>
+        
+        <div class="stat-card" id="budgetCard" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px; font-weight: bold;">本月預算使用率</span>
+                <span id="budgetLabel" style="font-size: 14px; color: var(--text-muted);">$0 / $0</span>
+            </div>
+            <div class="budget-progress-bg">
+                <div class="budget-progress-fill" id="budgetFill"></div>
+            </div>
+        </div>
+
+        <div class="custom-select" id="timeRangeContainer">
+            <input type="hidden" id="timeRangeVal" value="week">
+            <div class="select-selected" onclick="toggleDropdown(this)">近 7 日報表</div>
+            <div class="select-items select-hide">
+                <div onclick="selectTimeRange('week', '近 7 日報表')">近 7 日報表</div>
+                <div onclick="selectTimeRange('month', '本月報表')">本月報表</div>
+                <div onclick="selectTimeRange('custom_month', '自訂月份')">自訂月份</div>
+            </div>
+        </div>
+        
+        <div id="customMonthPicker" class="time-input-group" style="display: none; margin-top: 0; margin-bottom: 15px;">
+            <input type="number" id="statCustomYear" inputmode="numeric" placeholder="年 (例: 2026)" style="flex: 1;" oninput="renderStats()">
+            <input type="number" id="statCustomMonth" inputmode="numeric" placeholder="月 (例: 5)" style="flex: 1;" oninput="renderStats()">
+        </div>
+        
+        <div class="stat-card" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <div style="font-size: 14px; color: var(--text-muted);">當期總花費</div>
+                <div id="totalSpend" style="font-size: 26px; font-weight: bold; margin: 5px 0;">$0</div>
+                <div id="avgScore" style="font-size: 12px; color: var(--accent-color); font-weight: bold;">平均評分: - 星</div>
+            </div>
+            <div id="donutChart" class="donut-container"><div class="donut-inner">分類<br>比例</div></div>
+        </div>
+        
+        <div id="categoryStats" style="margin-bottom: 20px;"></div>
+        
+        <div class="stat-card">
+            <h4 id="chartTitle" style="margin-top: 0; color: var(--text-muted); margin-bottom: 5px;">花費趨勢</h4>
+            <div id="barChartContainer" class="bar-chart-container"></div>
+        </div>
+
+        <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <h3>固定消費管理</h3>
+            <p style="font-size: 12px; color: var(--text-muted);">設定後，系統將在到期日自動為您記帳。</p>
+            <details class="date-picker-details" id="fixedExpenseDetails">
+                <summary>➕ 新增/編輯固定消費</summary>
+                <div style="margin-top: 15px;">
+                    <input type="number" id="feAmount" inputmode="numeric" placeholder="金額 (必填)">
+                    <input type="text" id="feName" placeholder="消費名稱 (例如: Netflix)">
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <div class="custom-select" id="feCatContainer" style="flex: 1;"></div>
+                        <div class="custom-select" id="feFreqContainer" style="flex: 1;">
+                            <input type="hidden" id="feFreqVal" value="month">
+                            <div class="select-selected" onclick="toggleDropdown(this)">每月</div>
+                            <div class="select-items select-hide">
+                                <div onclick="selectCategory('feFreqContainer', 'day', '每日')">每日</div>
+                                <div onclick="selectCategory('feFreqContainer', 'week', '每週')">每週</div>
+                                <div onclick="selectCategory('feFreqContainer', 'month', '每月')">每月</div>
+                                <div onclick="selectCategory('feFreqContainer', 'year', '每年')">每年</div>
+                                <div onclick="selectCategory('feFreqContainer', 'custom', '自訂間距')">自訂間距</div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="number" id="feCustomDays" inputmode="numeric" placeholder="輸入自訂天數 (例如: 14)" style="display:none; margin-top: -5px; margin-bottom: 15px;">
+                    <label style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom:8px;">首次扣款日期（預設為當下）:</label>
+                    <div class="time-input-group" style="margin-top: 0; margin-bottom: 15px;">
+                        <input type="number" id="feYear" inputmode="numeric" placeholder="年" style="flex: 1;">
+                        <input type="number" id="feMMDD" inputmode="numeric" placeholder="月日" style="flex: 1;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button id="feSaveBtn" onclick="addFixedExpense(this)" style="flex: 1; margin-bottom: 0;">儲存設定</button>
+                        <button id="feCancelBtn" class="btn-secondary" onclick="cancelEditFixedExpense()" style="flex: 1; margin-bottom: 0; display: none;">取消</button>
+                    </div>
+                </div>
+            </details>
+            <div id="fixedExpenseList"></div>
+        </div>
+    </div>
+
+    <div id="tab-history" class="tab-content">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: -5px;">
+            <h2 style="margin: 0;">歷史清單</h2>
+            <button id="batchModeBtn" onclick="toggleBatchMode()" style="width: 36px; height: 36px; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--btn-sec-bg); color: var(--btn-sec-text); border-radius: 8px; box-shadow: 0 2px 4px var(--card-shadow);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6l2 2 4-4"></path><path d="M3 12l2 2 4-4"></path><path d="M3 18l2 2 4-4"></path></svg>
+            </button>
+        </div>
+
+        <div id="batchActionBar" class="stat-card" style="display: none; background: var(--highlight-bg); padding: 12px; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                <label style="font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 8px; color: var(--text-color);">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="width: 18px; height: 18px; margin: 0;"> 全選 (<span id="selectedCount">0</span>)
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-danger" onclick="batchDelete()" style="flex: 1; margin: 0;">批量刪除</button>
+                <button class="btn-warning" onclick="openBatchEditPanel()" style="flex: 1; margin: 0;">批量編輯</button>
+            </div>
+        </div>
+
+        <div id="batchEditPanel" class="stat-card" style="display:none; border: 2px solid #ffc107; margin-bottom: 15px;">
+            <h3 style="margin-top:0; margin-bottom: 15px; color: #d97706;">✏️ 批量修改</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: -10px;">(若不修改該欄位，請直接留白)</p>
+            
+            <input type="number" id="batchEditAmt" inputmode="numeric" placeholder="金額 (留白不變)">
+            <input type="text" id="batchEditName" placeholder="消費項目名稱 (留白不變)" autocomplete="off">
+            
+            <div class="custom-select" id="batchEditCatContainer"></div>
+            
+            <details class="date-picker-details" id="batchTimeDetails">
+                <summary>🕒 編輯消費時間 (留白不變)</summary>
+                <div class="time-input-group">
+                    <input type="number" id="batchEditYear" inputmode="numeric" placeholder="年" style="flex: 1.2;">
+                    <input type="number" id="batchEditMMDD" inputmode="numeric" placeholder="月日" style="flex: 1.2;">
+                    <input type="number" id="batchEditTime" inputmode="numeric" placeholder="時間" style="flex: 1;">
+                </div>
+            </details>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-warning" onclick="saveBatchEdit(this)" style="flex: 1; margin-bottom: 0;">套用修改</button>
+                <button class="btn-secondary" onclick="closeBatchEditPanel()" style="flex: 1; margin-bottom: 0;">取消</button>
+            </div>
+        </div>
+
+        <div id="historyEditContainer" class="stat-card" style="display:none; border: 2px solid var(--accent-color); margin-bottom: 20px;">
+            <h3 style="margin-top:0; margin-bottom: 15px; color: var(--accent-color);">✏️ 編輯紀錄</h3>
+            <input type="number" id="histEditAmt" inputmode="numeric" placeholder="金額 (必填)">
+            <input type="text" id="histEditName" placeholder="消費項目名稱 (必填)">
+            
+            <div class="custom-select" id="histEditCatContainer"></div>
+            <label style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom:8px;">消費時間:</label>
+            <div class="time-input-group" style="margin-top: 0; margin-bottom: 15px;">
+                <input type="number" id="histEditYear" inputmode="numeric" placeholder="年" style="flex: 1.2;">
+                <input type="number" id="histEditMMDD" inputmode="numeric" placeholder="月日" style="flex: 1.2;">
+                <input type="number" id="histEditTime" inputmode="numeric" placeholder="時間" style="flex: 1;">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="saveHistoryEdit(this)" style="flex: 1; margin-bottom: 0;">儲存修改</button>
+                <button class="btn-secondary" onclick="cancelHistoryEdit()" style="flex: 1; margin-bottom: 0;">取消</button>
+            </div>
+        </div>
+
+        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px var(--card-shadow); border: 1px solid var(--border-color);">
+            <input type="text" id="searchKeyword" placeholder="🔍 搜尋消費項目名稱..." oninput="renderHistory()" style="margin-bottom: 15px; padding: 10px 12px; border-radius: 8px;">
+            <div style="display: flex; gap: 10px;">
+                <div class="custom-select" id="filterCatContainer" style="flex: 1; margin-bottom: 10px;"></div>
+                <div class="custom-select" id="filterTimeHistoryContainer" style="flex: 1; margin-bottom: 10px;"></div>
+            </div>
+            <div id="customDateRange" style="display: none; gap: 8px; margin-bottom: 15px; align-items: center; background: var(--highlight-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <input type="date" id="filterStartDate" onchange="renderHistory()" style="margin: 0; padding: 8px; font-size: 14px;">
+                <span style="color: var(--text-muted); font-size: 14px; font-weight: bold;">至</span>
+                <input type="date" id="filterEndDate" onchange="renderHistory()" style="margin: 0; padding: 8px; font-size: 14px;">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <div id="rangeLabel" style="font-size: 13px; font-weight: bold; color: var(--text-muted);">滿意度: ★0 ~ ★6</div>
+                <label style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                    <input type="checkbox" id="includeUnrated" checked onchange="renderHistory()" style="width: auto; margin: 0;"> 包含未評分
+                </label>
+            </div>
+            <div class="dual-slider-container">
+                <div class="dual-slider-track"></div>
+                <div class="dual-slider-fill" id="sliderFill" style="left: 0%; width: 100%;"></div>
+                <input type="range" id="filterMin" min="0" max="6" value="0" step="1" oninput="handleDualSlider(this)">
+                <input type="range" id="filterMax" min="0" max="6" value="6" step="1" oninput="handleDualSlider(this)">
+            </div>
+        </div>
+        <div id="filteredTotal" style="margin-bottom: 10px; font-weight: bold; color: var(--accent-color); font-size: 18px;"></div>
+        <div id="historyList"></div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+        <h2>設定</h2>
+        
+        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px var(--card-shadow); border: 1px solid var(--border-color);">
+            <h3 style="margin-top: 0; margin-bottom: 10px;">每月總預算</h3>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="budgetInput" placeholder="輸入預算金額" style="margin-bottom: 0;">
+                <button onclick="saveBudget(this)" style="width: 80px; margin-bottom: 0;">儲存</button>
+            </div>
+        </div>
+        
+        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px var(--card-shadow); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">分類與顏色</h3>
+                <button class="lock-btn" style="padding: 4px 8px;" id="catLockBtn" onclick="toggleCatSettingsLock(this)">🔒</button>
+            </div>
+            
+            <div id="addCategorySection" style="display: none; gap: 8px; align-items: center; margin-bottom: 15px;">
+                <div id="newCatColorBlock" class="cat-dot" style="background:#007bff; width: 28px; height: 28px; cursor: pointer; flex-shrink: 0;" onclick="this.style.display='none'; document.getElementById('newCatColorText').style.display='block'; document.getElementById('newCatColorText').focus(); vibe(10);"></div>
+                <input type="text" id="newCatColorText" value="#007BFF" maxlength="7" style="display: none; width: 80px; margin: 0; padding: 6px; font-family: monospace; font-size: 14px; flex-shrink: 0; text-align: center; border-radius: 6px;" onblur="if(/^#[0-9A-Fa-f]{6}$/i.test(this.value)){ document.getElementById('newCatColorBlock').style.background=this.value; } this.style.display='none'; document.getElementById('newCatColorBlock').style.display='block';">
+                <input type="text" id="newCategory" placeholder="新增分類" style="margin-bottom: 0; flex: 1; min-width: 0;">
+                <button onclick="addCategory(this)" style="width: 70px; margin-bottom: 0; flex-shrink: 0;">新增</button>
+            </div>
+            <div id="categoryList"></div>
+        </div>
+
+        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px var(--card-shadow); border: 1px solid var(--border-color);">
+            <h3 style="margin-top: 0; margin-bottom: 15px;">外觀主題</h3>
+            <div class="custom-select" id="themeContainer" style="margin-bottom: 0;">
+                <input type="hidden" id="themeVal" value="system">
+                <div class="select-selected" onclick="toggleDropdown(this)">跟隨系統</div>
+                <div class="select-items select-hide">
+                    <div onclick="setThemePref('system', '跟隨系統')">跟隨系統</div>
+                    <div onclick="setThemePref('light', '明亮模式')">明亮模式</div>
+                    <div onclick="setThemePref('dark', '夜間模式')">夜間模式</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px var(--card-shadow); border: 1px solid var(--border-color);">
+            <h3 style="margin-top: 0; margin-bottom: 10px;">隱私防護鎖 (PIN)</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 0;">設定 4~6 位純數字密碼，保護隱私。</p>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="pinSettingInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input-secure" placeholder="輸入4~6位" style="margin-bottom: 0; flex: 1;" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button onclick="savePin(this)" style="width: 80px; margin-bottom: 0;">設定</button>
+            </div>
+            <button id="removePinBtn" class="btn-danger" onclick="removePin()" style="margin-top: 10px; display: none; width: 100%; padding: 12px; font-size: 16px;">移除密碼鎖</button>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="exportData()" style="background-color: #28a745; flex: 1;">匯出備份</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-warning" style="flex: 1;">匯入還原</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('input', this)">記帳</div>
+        <div class="nav-item" onclick="switchTab('stats', this)">報表</div>
+        <div class="nav-item" onclick="switchTab('history', this)">歷史</div>
+        <div class="nav-item" onclick="switchTab('settings', this)">設定</div>
+    </div>
+
+    <script>
+        let currentlyOpenSwipe = null; 
+        let records = JSON.parse(localStorage.getItem('expenseRecords')) || [];
+        
+        let isBatchMode = false;
+        let selectedRecords = new Set();
+        
+        function vibe(ms = 30) {
+            if ("vibrate" in navigator) { navigator.vibrate(ms); }
+        }
+
+        function showBtnSuccess(btn, successText = '✓') { 
+            if(!btn) return;
+            vibe([20, 40]); 
+            
+            const originalInlineWidth = btn.style.width;
+            const originalInlineMinWidth = btn.style.minWidth;
+            
+            const currentWidth = btn.getBoundingClientRect().width;
+            
+            btn.style.width = currentWidth + 'px';
+            btn.style.minWidth = currentWidth + 'px';
+            
+            const originalText = btn.innerText;
+            btn.innerText = successText;
+            btn.classList.add('btn-success-state');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('btn-success-state');
+                btn.style.width = originalInlineWidth; 
+                btn.style.minWidth = originalInlineMinWidth; 
+            }, 1500);
+        }
+
+        function parseTimeSegment(yStr, mdStr, tStr = "0000") {
+            if(!yStr || !mdStr) return null;
+            let y = parseInt(yStr), md = mdStr, m = 0, d = 1;
+            if (md.length === 3) { m = parseInt(md.substring(0, 1)) - 1; d = parseInt(md.substring(1, 3)); } 
+            else if (md.length >= 4) { m = parseInt(md.substring(0, 2)) - 1; d = parseInt(md.substring(2, 4)); }
+
+            let h = 0, min = 0;
+            if (tStr) {
+                if (tStr.length <= 2) { h = parseInt(tStr); } 
+                else if (tStr.length === 3) { h = parseInt(tStr.substring(0, 1)); min = parseInt(tStr.substring(1, 3)); } 
+                else { h = parseInt(tStr.substring(0, tStr.length - 2)); min = parseInt(tStr.substring(tStr.length - 2)); }
+            }
+            return new Date(y, m, d, h, min).getTime();
+        }
+
+        function generateStarsHtml(score, id) {
+            let html = '<div class="star-rating">';
+            for(let i=1; i<=6; i++) {
+                let activeClass = (score !== null && i <= score) ? 'active' : '';
+                html += `<span class="${activeClass}" onclick="updateStarScore(${id}, ${i}); event.stopPropagation();">★</span>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        const defaultChartColors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#17a2b8', '#fd7e14', '#20c997'];
+        let categoriesRaw = JSON.parse(localStorage.getItem('expenseCategories')) || [
+            {name: '飲食', color: '#007bff'}, {name: '交通', color: '#28a745'}, 
+            {name: '娛樂', color: '#ffc107'}, {name: '生活', color: '#dc3545'}, {name: '其它', color: '#6f42c1'}
+        ];
+        if (categoriesRaw.length > 0 && typeof categoriesRaw[0] === 'string') {
+            categoriesRaw = categoriesRaw.map((c, i) => ({name: c, color: defaultChartColors[i % defaultChartColors.length]}));
+            localStorage.setItem('expenseCategories', JSON.stringify(categoriesRaw));
+        }
+        let categories = categoriesRaw;
+        
+        function getCatColor(catName) {
+            const c = categories.find(x => x.name === catName);
+            return c ? c.color : '#888888';
+        }
+
+        let fixedExpenses = JSON.parse(localStorage.getItem('fixedExpenses')) || [];
+        let monthlyBudget = parseInt(localStorage.getItem('monthlyBudget')) || 0;
+        let appPin = localStorage.getItem('appPin') || null;
+        
+        let sessionUnlocked = false;
+        let pendingTabId = null;
+        let pendingTabEl = null;
+
+        let openedHistoryPanelId = null;
+        let editingHistoryId = null; 
+        let quickEditTimer = null;
+        let lastSavedRecord = null;
+        let isEditMode = false;
+        let editingFeId = null; 
+        let isCatSettingsLocked = true;
+
+        let currentEnteredPin = "";
+        function initLockScreenIfNeeded(targetTabId, el) {
+            if (appPin && !sessionUnlocked && targetTabId !== 'input') {
+                pendingTabId = targetTabId; pendingTabEl = el;
+                document.getElementById('lockScreen').style.display = 'flex';
+                updatePinDots();
+                return true; 
+            }
+            return false;
+        }
+        
+        function pressPin(num) {
+            if(currentEnteredPin.length < 6) {
+                vibe(15); currentEnteredPin += num; updatePinDots();
+                if(currentEnteredPin.length >= appPin.length) setTimeout(checkPin, 10);
+            }
+        }
+
+        function deletePin() {
+            if(currentEnteredPin.length > 0) { vibe(15); currentEnteredPin = currentEnteredPin.slice(0, -1); updatePinDots(); }
+        }
+
+        function updatePinDots() {
+            const container = document.getElementById('pinDots');
+            const targetLength = appPin ? appPin.length : 4; 
+            let html = '';
+            for(let i=0; i<targetLength; i++) {
+                html += `<div class="pin-dot ${i < currentEnteredPin.length ? 'filled' : ''}"></div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function checkPin() {
+            if(currentEnteredPin === appPin) {
+                vibe([30, 50, 30]); 
+                sessionUnlocked = true;
+                document.getElementById('lockScreen').style.opacity = '0';
+                setTimeout(() => { 
+                    document.getElementById('lockScreen').style.display = 'none'; 
+                    document.getElementById('lockScreen').style.opacity = '1'; 
+                    if(pendingTabId) {
+                        switchTab(pendingTabId, pendingTabEl);
+                        pendingTabId = null;
+                    }
+                }, 200);
+            } else {
+                vibe(100); 
+                document.getElementById('lockTitle').innerText = '密碼錯誤，請重試';
+                document.getElementById('lockTitle').style.color = 'var(--danger-bg)';
+                currentEnteredPin = ""; updatePinDots();
+                setTimeout(() => {
+                    document.getElementById('lockTitle').innerText = '請輸入密碼解鎖';
+                    document.getElementById('lockTitle').style.color = 'var(--text-color)';
+                }, 1000);
+            }
+        }
+
+        function savePin(btn) {
+            const val = document.getElementById('pinSettingInput').value;
+            if(val.length >= 4 && val.length <= 6 && /^\d+$/.test(val)) {
+                appPin = val; localStorage.setItem('appPin', val);
+                document.getElementById('pinSettingInput').value = '';
+                document.getElementById('removePinBtn').style.display = 'block';
+                sessionUnlocked = true; 
+                showBtnSuccess(btn); 
+            } else { alert("請輸入 4 到 6 位純數字密碼"); }
+        }
+
+        function removePin() {
+            vibe(30);
+            if(confirm("確定要移除隱私密碼鎖嗎？")) {
+                appPin = null; localStorage.removeItem('appPin');
+                document.getElementById('removePinBtn').style.display = 'none';
+                vibe(50); alert("防護鎖已移除。");
+            }
+        }
+
+        if(appPin) document.getElementById('removePinBtn').style.display = 'block';
+        if(monthlyBudget > 0) document.getElementById('budgetInput').value = monthlyBudget;
+
+        function saveBudget(btn) {
+            let val = parseInt(document.getElementById('budgetInput').value);
+            if(isNaN(val) || val < 0) val = 0;
+            monthlyBudget = val; localStorage.setItem('monthlyBudget', val);
+            showBtnSuccess(btn);
+        }
+
+        let currentThemePref = localStorage.getItem('expenseTheme') || 'system';
+        function applyTheme() {
+            if (currentThemePref === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            else if (currentThemePref === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            else {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme', 'dark');
+                else document.documentElement.setAttribute('data-theme', 'light');
+            }
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => { if(currentThemePref === 'system') applyTheme(); });
+        function setThemePref(val, text) {
+            currentThemePref = val; localStorage.setItem('expenseTheme', val);
+            document.getElementById('themeVal').value = val;
+            document.querySelector('#themeContainer .select-selected').innerText = text; applyTheme();
+        }
+        const themeMap = { 'system': '跟隨系統', 'light': '明亮模式', 'dark': '夜間模式' };
+        document.getElementById('themeVal').value = currentThemePref;
+        document.querySelector('#themeContainer .select-selected').innerText = themeMap[currentThemePref];
+        applyTheme();
+
+        function handleAutoFill() {
+            const val = document.getElementById('itemName').value.trim().toLowerCase();
+            const box = document.getElementById('autoFillBox');
+            if(!val) { box.classList.add('select-hide'); return; }
+
+            let matches = []; let seen = new Set();
+            for(let i = records.length -1; i >= 0; i--) {
+                if(records[i].itemName.toLowerCase().includes(val) && !seen.has(records[i].itemName)) {
+                    seen.add(records[i].itemName); matches.push(records[i]);
+                    if(matches.length >= 3) break; 
+                }
+            }
+
+            if(matches.length > 0) {
+                box.innerHTML = matches.map(m => `<div onclick="applyAutoFill('${m.itemName}', ${m.amount}, '${m.category}')"><span class="text-nowrap">${m.itemName}</span><span style="color:var(--text-muted); font-size:12px; flex-shrink:0; margin-left:8px;">$${m.amount} | ${m.category}</span></div>`).join('');
+                box.classList.remove('select-hide');
+            } else { box.classList.add('select-hide'); }
+        }
+        function applyAutoFill(name, amount, cat) {
+            vibe(10);
+            document.getElementById('itemName').value = name;
+            document.getElementById('amount').value = amount;
+            selectCategory('inputCatContainer', cat, cat);
+            document.getElementById('autoFillBox').classList.add('select-hide');
+        }
+
+        document.addEventListener('click', function(e) {
+            closeAllDropdowns(e.target);
+            if(!e.target.closest('#itemName') && !e.target.closest('#autoFillBox') && document.getElementById('autoFillBox')) {
+                document.getElementById('autoFillBox').classList.add('select-hide');
+            }
+        });
+
+        function processFixedExpenses() {
+            let now = Date.now(); let updated = false;
+            fixedExpenses.forEach(fe => {
+                while(fe.nextDate <= now) {
+                    records.push({ id: Date.now() + Math.floor(Math.random()*1000), date: fe.nextDate, amount: fe.amount, itemName: fe.name, category: fe.category, score: null });
+                    updated = true;
+                    let nd = new Date(fe.nextDate);
+                    if(fe.frequency === 'day') nd.setDate(nd.getDate() + 1);
+                    else if(fe.frequency === 'week') nd.setDate(nd.getDate() + 7);
+                    else if(fe.frequency === 'month') nd.setMonth(nd.getMonth() + 1);
+                    else if(fe.frequency === 'year') nd.setFullYear(nd.getFullYear() + 1);
+                    else if(fe.frequency === 'custom' && fe.customDays) nd.setDate(nd.getDate() + fe.customDays);
+                    fe.nextDate = nd.getTime();
+                }
+            });
+            if(updated) { localStorage.setItem('expenseRecords', JSON.stringify(records)); localStorage.setItem('fixedExpenses', JSON.stringify(fixedExpenses)); }
+        }
+
+        processFixedExpenses(); 
+        buildCategoryDropdowns();
+        renderSettingsCategories();
+        renderFixedExpenses();
+        setCurrentDateTime();
+
+        function setCurrentDateTime() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const md = String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            const time = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('inputYear').value = y;
+            document.getElementById('inputMMDD').value = md;
+            document.getElementById('inputTime').value = time;
+            
+            if (!editingFeId) {
+                const feYearEl = document.getElementById('feYear');
+                const feMMDDEl = document.getElementById('feMMDD');
+                if (feYearEl && feMMDDEl) {
+                    feYearEl.value = y;
+                    feMMDDEl.value = md;
+                }
+            }
+        }
+
+        function switchTab(tabId, el) {
+            vibe(10);
+            if (initLockScreenIfNeeded(tabId, el)) return; 
+
+            const currentActiveTab = document.querySelector('.tab-content.active');
+            if (currentActiveTab) {
+                const currentTabId = currentActiveTab.id.replace('tab-', '');
+                if (currentTabId !== tabId) {
+                    if (currentTabId === 'history') {
+                        if (editingHistoryId) {
+                            const r = records.find(x => x.id === editingHistoryId);
+                            if (r) {
+                                const d = new Date(r.date);
+                                const origY = d.getFullYear().toString();
+                                const origMD = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+                                const origT = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+                                
+                                const isChanged = document.getElementById('histEditName').value !== r.itemName ||
+                                                  document.getElementById('histEditAmt').value !== r.amount.toString() ||
+                                                  document.getElementById('histEditCatVal').value !== r.category ||
+                                                  document.getElementById('histEditYear').value !== origY ||
+                                                  document.getElementById('histEditMMDD').value !== origMD ||
+                                                  document.getElementById('histEditTime').value !== origT;
+                                if (!isChanged) cancelHistoryEdit(null); 
+                            } else cancelHistoryEdit(null);
+                        }
+                        
+                        if (isBatchMode) {
+                            const batchEditPanel = document.getElementById('batchEditPanel');
+                            const isBatchPanelOpen = batchEditPanel.style.display === 'block';
+
+                            if (isBatchPanelOpen) {
+                                const batchHasInput = document.getElementById('batchEditAmt').value ||
+                                                      document.getElementById('batchEditName').value ||
+                                                      document.getElementById('batchEditCatVal').value ||
+                                                      document.getElementById('batchEditYear').value ||
+                                                      document.getElementById('batchEditMMDD').value ||
+                                                      document.getElementById('batchEditTime').value;
+                                if (!batchHasInput) {
+                                    closeBatchEditPanel();
+                                    toggleBatchMode();
+                                }
+                            } else {
+                                toggleBatchMode();
+                            }
+                        }
+                    }
+                    
+                    if (currentTabId === 'stats') {
+                        const feDetails = document.getElementById('fixedExpenseDetails');
+                        if (feDetails.open) {
+                            if (editingFeId) {
+                                const fe = fixedExpenses.find(f => f.id === editingFeId);
+                                if (fe) {
+                                    const isChanged = document.getElementById('feName').value !== fe.name ||
+                                                      document.getElementById('feAmount').value !== fe.amount.toString() ||
+                                                      document.getElementById('feCatVal').value !== fe.category ||
+                                                      document.getElementById('feFreqVal').value !== fe.frequency ||
+                                                      (fe.frequency === 'custom' && document.getElementById('feCustomDays').value !== fe.customDays.toString());
+                                    if (!isChanged) cancelEditFixedExpense();
+                                } else cancelEditFixedExpense();
+                            } else {
+                                const feAmt = document.getElementById('feAmount').value;
+                                const feName = document.getElementById('feName').value.trim();
+                                if (!feAmt && !feName) {
+                                    feDetails.open = false;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (currentTabId === 'settings') {
+                        if (!isCatSettingsLocked) {
+                            const newCatName = document.getElementById('newCategory').value.trim();
+                            if (!newCatName) {
+                                const lockBtn = document.getElementById('catLockBtn');
+                                toggleCatSettingsLock(lockBtn); 
+                            }
+                        }
+                    }
+                }
+            }
+
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            el.classList.add('active');
+            closeAllDropdowns(); openedHistoryPanelId = null;
+            if(tabId === 'stats') { processFixedExpenses(); renderStats(); renderFixedExpenses(); }
+            if(tabId === 'history') { processFixedExpenses(); renderHistory(); }
+        }
+
+        function toggleDropdown(el) {
+            let e = window.event; if(e) e.stopPropagation();
+            closeAllDropdowns(el);
+            document.querySelectorAll('.record-card').forEach(c => c.style.zIndex = '1');
+            document.querySelectorAll('.custom-select').forEach(c => c.style.zIndex = '1');
+            let parentCard = el.closest('.record-card'); if(parentCard) parentCard.style.zIndex = '100';
+            
+            let histEditCard = el.closest('#historyEditContainer'); if(histEditCard) histEditCard.style.zIndex = '100';
+            let parentSelect = el.closest('.custom-select'); if(parentSelect) parentSelect.style.zIndex = '100';
+            let batchEditPanel = el.closest('#batchEditPanel'); if(batchEditPanel) batchEditPanel.style.zIndex = '100';
+            
+            el.classList.toggle('select-arrow-active');
+            let items = el.nextElementSibling;
+            
+            let rect = el.getBoundingClientRect();
+            let spaceBelow = window.innerHeight - rect.bottom;
+            if(spaceBelow < 220 && rect.top > spaceBelow) { items.classList.add('select-up'); } 
+            else { items.classList.remove('select-up'); }
+            
+            items.classList.toggle('select-hide');
+            vibe(10);
+        }
+
+        function closeAllDropdowns(exceptEl) {
+            let items = document.querySelectorAll('.select-items');
+            let selecteds = document.querySelectorAll('.select-selected');
+            for (let i = 0; i < items.length; i++) {
+                if (selecteds[i] !== exceptEl) {
+                    selecteds[i].classList.remove('select-arrow-active');
+                    items[i].classList.remove('select-up');
+                    items[i].classList.add('select-hide');
+                }
+            }
+            document.querySelectorAll('.record-card').forEach(c => c.style.zIndex = '1');
+            document.querySelectorAll('.custom-select').forEach(c => c.style.zIndex = '1');
+            let histEditCard = document.getElementById('historyEditContainer'); if(histEditCard) histEditCard.style.zIndex = '1';
+            let batchEditPanel = document.getElementById('batchEditPanel'); if(batchEditPanel) batchEditPanel.style.zIndex = '1';
+        }
+
+        function buildCategoryDropdowns() {
+            let inputHtml = `<input type="hidden" id="inputCatVal" value="${categories[0].name}"><div class="select-selected" onclick="toggleDropdown(this)"><span class="cat-dot" style="background:${categories[0].color}"></span> <span class="text-nowrap">${categories[0].name}</span></div><div class="select-items select-hide">${categories.map(c => `<div onclick="selectCategory('inputCatContainer', '${c.name}', null)"><span class="cat-dot" style="background:${c.color}"></span> <span class="text-nowrap">${c.name}</span></div>`).join('')}</div>`;
+            document.getElementById('inputCatContainer').innerHTML = inputHtml;
+
+            let filterHtml = `<input type="hidden" id="filterCatVal" value="all"><div class="select-selected" onclick="toggleDropdown(this)">全部分類</div><div class="select-items select-hide"><div onclick="selectCategory('filterCatContainer', 'all', '全部分類', true)">全部分類</div>${categories.map(c => `<div onclick="selectCategory('filterCatContainer', '${c.name}', '${c.name}', true)"><span class="cat-dot" style="background:${c.color}"></span> <span class="text-nowrap">${c.name}</span></div>`).join('')}</div>`;
+            document.getElementById('filterCatContainer').innerHTML = filterHtml;
+            
+            let feHtml = `<input type="hidden" id="feCatVal" value="${categories[0].name}"><div class="select-selected" onclick="toggleDropdown(this)"><span class="cat-dot" style="background:${categories[0].color}"></span> <span class="text-nowrap">${categories[0].name}</span></div><div class="select-items select-hide">${categories.map(c => `<div onclick="selectCategory('feCatContainer', '${c.name}', null)"><span class="cat-dot" style="background:${c.color}"></span> <span class="text-nowrap">${c.name}</span></div>`).join('')}</div>`;
+            let feContainer = document.getElementById('feCatContainer'); if(feContainer) feContainer.innerHTML = feHtml;
+
+            let histEditHtml = `<input type="hidden" id="histEditCatVal" value="${categories[0].name}"><div class="select-selected" onclick="toggleDropdown(this)"><span class="cat-dot" style="background:${categories[0].color}"></span> <span class="text-nowrap">${categories[0].name}</span></div><div class="select-items select-hide">${categories.map(c => `<div onclick="selectCategory('histEditCatContainer', '${c.name}', null)"><span class="cat-dot" style="background:${c.color}"></span> <span class="text-nowrap">${c.name}</span></div>`).join('')}</div>`;
+            let histEditContainer = document.getElementById('histEditCatContainer'); if(histEditContainer) histEditContainer.innerHTML = histEditHtml;
+
+            let filterTimeHtml = `<input type="hidden" id="filterTimeHistoryVal" value="all"><div class="select-selected" onclick="toggleDropdown(this)">全部時間</div><div class="select-items select-hide"><div onclick="selectTimeHistoryFilter('all', '全部時間')">全部時間</div><div onclick="selectTimeHistoryFilter('week', '近 7 天')">近 7 天</div><div onclick="selectTimeHistoryFilter('month', '本月')">本月</div><div onclick="selectTimeHistoryFilter('custom', '自訂區間')">自訂區間</div></div>`;
+            document.getElementById('filterTimeHistoryContainer').innerHTML = filterTimeHtml;
+            
+            let batchEditCatHtml = `<input type="hidden" id="batchEditCatVal" value=""><div class="select-selected" onclick="toggleDropdown(this)">-- 不修改分類 --</div><div class="select-items select-hide"><div onclick="selectCategory('batchEditCatContainer', '', '-- 不修改分類 --')">-- 不修改分類 --</div>${categories.map(c => `<div onclick="selectCategory('batchEditCatContainer', '${c.name}', null)"><span class="cat-dot" style="background:${c.color}"></span> <span class="text-nowrap">${c.name}</span></div>`).join('')}</div>`;
+            let batchEditCatContainer = document.getElementById('batchEditCatContainer'); if(batchEditCatContainer) batchEditCatContainer.innerHTML = batchEditCatHtml;
+        }
+
+        function selectCategory(containerId, val, text, triggerRender = false) {
+            let container = document.getElementById(containerId);
+            container.querySelector('input').value = val; 
+            const cat = categories.find(c => c.name === val);
+            const contentHTML = cat ? `<span class="cat-dot" style="background:${cat.color}"></span> <span class="text-nowrap">${cat.name}</span>` : (text || val);
+            container.querySelector('.select-selected').innerHTML = contentHTML;
+            
+            if (containerId === 'feFreqContainer') {
+                const customDaysInput = document.getElementById('feCustomDays');
+                if (customDaysInput) customDaysInput.style.display = (val === 'custom') ? 'block' : 'none';
+            }
+
+            if(triggerRender) renderHistory();
+            vibe(10);
+        }
+
+        function selectTimeHistoryFilter(val, text) {
+            let container = document.getElementById('filterTimeHistoryContainer');
+            container.querySelector('input').value = val; container.querySelector('.select-selected').innerText = text;
+            let customDiv = document.getElementById('customDateRange');
+            if (val === 'custom') customDiv.style.display = 'flex';
+            else { customDiv.style.display = 'none'; document.getElementById('filterStartDate').value = ''; document.getElementById('filterEndDate').value = ''; }
+            renderHistory();
+        }
+
+        function selectTimeRange(val, text) {
+            document.getElementById('timeRangeVal').value = val;
+            document.querySelector('#timeRangeContainer .select-selected').innerText = text;
+            
+            // 加入自訂月份顯示邏輯
+            const customPicker = document.getElementById('customMonthPicker');
+            if (val === 'custom_month') {
+                customPicker.style.display = 'flex';
+                const now = new Date();
+                if (!document.getElementById('statCustomYear').value) {
+                    document.getElementById('statCustomYear').value = now.getFullYear();
+                }
+                if (!document.getElementById('statCustomMonth').value) {
+                    document.getElementById('statCustomMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+                }
+            } else {
+                customPicker.style.display = 'none';
+            }
+
+            renderStats();
+        }
+
+        function handleDualSlider(target) {
+            let minEl = document.getElementById('filterMin'), maxEl = document.getElementById('filterMax');
+            let minVal = parseInt(minEl.value), maxVal = parseInt(maxEl.value);
+            if (minVal > maxVal) {
+                if (target.id === 'filterMin') { minEl.value = maxVal; minVal = maxVal; }
+                else { maxEl.value = minVal; maxVal = minVal; }
+            }
+            document.getElementById('rangeLabel').innerText = `滿意度: ★ ${minVal} ~ ★ ${maxVal}`;
+            let p1 = (minVal / 6) * 100, p2 = (maxVal / 6) * 100;
+            let fill = document.getElementById('sliderFill');
+            fill.style.left = p1 + '%'; fill.style.width = (p2 - p1) + '%';
+            vibe(10); renderHistory();
+        }
+
+        function triggerHighlightWhenVisible(el) {
+            el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            let hasTriggered = false;
+            
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !hasTriggered) {
+                    hasTriggered = true;
+                    el.classList.add('highlight-flash');
+                    setTimeout(() => el.classList.remove('highlight-flash'), 800);
+                    observer.disconnect();
+                }
+            }, { threshold: 1.0 });
+            
+            observer.observe(el);
+            
+            setTimeout(() => {
+                if (!hasTriggered) {
+                    hasTriggered = true;
+                    observer.disconnect();
+                    el.classList.add('highlight-flash');
+                    setTimeout(() => el.classList.remove('highlight-flash'), 800);
+                }
+            }, 1000); 
+        }
+
+        function handleSaveClick(btn) { 
+            if (isEditMode) pullBackLastRecord(btn); 
+            else saveNewRecord(btn); 
+        }
+
+        function saveNewRecord(btn) {
+            const amountInput = document.getElementById('amount');
+            const itemInput = document.getElementById('itemName');
+            const amount = parseInt(amountInput.value);
+            const itemName = itemInput.value;
+            const category = document.getElementById('inputCatVal').value; 
+
+            const yStr = document.getElementById('inputYear').value;
+            const mdStr = document.getElementById('inputMMDD').value;
+            const tStr = document.getElementById('inputTime').value;
+
+            if(!amount || !itemName) return alert("請完整填寫資訊");
+            const finalTimestamp = parseTimeSegment(yStr, mdStr, tStr);
+            if(!finalTimestamp) return alert("年份與月日為必填項目");
+            
+            lastSavedRecord = { id: Date.now(), date: finalTimestamp, amount, itemName, category, score: null };
+            records.push(lastSavedRecord);
+            localStorage.setItem('expenseRecords', JSON.stringify(records));
+            
+            amountInput.value = ''; itemInput.value = '';
+            setCurrentDateTime();
+            document.getElementById('timeDetails').open = false;
+            document.getElementById('autoFillBox').classList.add('select-hide');
+            
+            vibe([20, 40]);
+            
+            isEditMode = true; let count = 3;
+            btn.classList.add('btn-warning'); 
+            
+            btn.innerText = `馬上修改 (${count}s)`; 
+
+            if(quickEditTimer) clearInterval(quickEditTimer);
+            quickEditTimer = setInterval(() => {
+                count--;
+                if(count > 0) { btn.innerText = `馬上修改 (${count}s)`; } 
+                else { resetSaveButton(); }
+            }, 1000);
+        }
+
+        function pullBackLastRecord(btn) {
+            if(!lastSavedRecord) return;
+            clearInterval(quickEditTimer);
+            records = records.filter(r => r.id !== lastSavedRecord.id);
+            localStorage.setItem('expenseRecords', JSON.stringify(records));
+
+            document.getElementById('amount').value = lastSavedRecord.amount;
+            document.getElementById('itemName').value = lastSavedRecord.itemName;
+            selectCategory('inputCatContainer', lastSavedRecord.category, lastSavedRecord.category);
+            
+            let d = new Date(lastSavedRecord.date);
+            document.getElementById('inputYear').value = d.getFullYear();
+            document.getElementById('inputMMDD').value = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            document.getElementById('inputTime').value = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('timeDetails').open = true;
+            vibe(30); resetSaveButton();
+        }
+
+        function resetSaveButton() {
+            clearInterval(quickEditTimer);
+            isEditMode = false; lastSavedRecord = null;
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = '立即儲存'; btn.classList.remove('btn-warning');
+        }
+
+        function addFixedExpense(btn) {
+            const name = document.getElementById('feName').value.trim();
+            const amount = parseInt(document.getElementById('feAmount').value);
+            const category = document.getElementById('feCatVal').value;
+            const freq = document.getElementById('feFreqVal').value;
+            
+            let customDays = null;
+            if (freq === 'custom') {
+                customDays = parseInt(document.getElementById('feCustomDays').value);
+                if (!customDays || customDays <= 0) return alert("請輸入有效的自訂天數");
+            }
+            
+            const yStr = document.getElementById('feYear').value;
+            const mdStr = document.getElementById('feMMDD').value;
+            const nextDate = parseTimeSegment(yStr, mdStr);
+
+            if(!name || !amount || !nextDate) return alert("請完整填寫固定消費資訊");
+            
+            let savedFeId = null;
+            if (editingFeId) {
+                const idx = fixedExpenses.findIndex(f => f.id === editingFeId);
+                if(idx !== -1) fixedExpenses[idx] = { ...fixedExpenses[idx], name, amount, category, frequency: freq, customDays, nextDate };
+                savedFeId = editingFeId;
+                editingFeId = null;
+                document.getElementById('feSaveBtn').innerText = '儲存設定';
+                document.getElementById('feCancelBtn').style.display = 'none';
+            } else {
+                const newId = Date.now();
+                fixedExpenses.push({ id: newId, name, amount, category, frequency: freq, customDays, nextDate }); 
+                savedFeId = newId;
+            }
+            
+            localStorage.setItem('fixedExpenses', JSON.stringify(fixedExpenses));
+            document.getElementById('feName').value = ''; document.getElementById('feAmount').value = ''; 
+            document.getElementById('feCustomDays').value = '';
+            setCurrentDateTime(); 
+            document.getElementById('fixedExpenseDetails').open = false;
+            
+            showBtnSuccess(btn); 
+            processFixedExpenses(); renderFixedExpenses(); renderStats(); 
+            
+            if (savedFeId) {
+                setTimeout(() => {
+                    const el = document.querySelector(`[data-id="fe_${savedFeId}"]`);
+                    if(el) { triggerHighlightWhenVisible(el); }
+                }, 100);
+            }
+        }
+
+        function editFixedExpense(id) {
+            vibe(10);
+            if (editingFeId === id) {
+                cancelEditFixedExpense();
+                return;
+            }
+            
+            const fe = fixedExpenses.find(f => f.id === id); if(!fe) return;
+            document.getElementById('feName').value = fe.name; document.getElementById('feAmount').value = fe.amount;
+            selectCategory('feCatContainer', fe.category, fe.category);
+            const freqMap = { 'day': '每日', 'week': '每週', 'month': '每月', 'year': '每年', 'custom': '自訂間距' };
+            document.getElementById('feFreqVal').value = fe.frequency;
+            document.querySelector('#feFreqContainer .select-selected').innerText = freqMap[fe.frequency];
+            
+            const customDaysInput = document.getElementById('feCustomDays');
+            if (fe.frequency === 'custom') {
+                customDaysInput.style.display = 'block';
+                customDaysInput.value = fe.customDays;
+            } else {
+                customDaysInput.style.display = 'none';
+                customDaysInput.value = '';
+            }
+            
+            let d = new Date(fe.nextDate);
+            document.getElementById('feYear').value = d.getFullYear();
+            document.getElementById('feMMDD').value = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            
+            editingFeId = id; document.getElementById('feSaveBtn').innerText = '更新設定';
+            document.getElementById('feCancelBtn').style.display = 'block';
+            document.getElementById('fixedExpenseDetails').open = true;
+            document.getElementById('fixedExpenseDetails').scrollIntoView({ behavior: 'smooth' });
+            
+            renderFixedExpenses(); 
+        }
+
+        function cancelEditFixedExpense() {
+            vibe(10);
+            editingFeId = null; 
+            document.getElementById('feName').value = ''; 
+            document.getElementById('feAmount').value = ''; 
+            document.getElementById('feCustomDays').value = '';
+            document.getElementById('feCustomDays').style.display = 'none';
+            selectCategory('feFreqContainer', 'month', '每月'); 
+            setCurrentDateTime(); 
+            document.getElementById('feSaveBtn').innerText = '儲存設定'; 
+            document.getElementById('feCancelBtn').style.display = 'none';
+            document.getElementById('fixedExpenseDetails').open = false;
+            
+            renderFixedExpenses(); 
+        }
+
+        function deleteFixedExpense(id) {
+            vibe(30);
+            fixedExpenses = fixedExpenses.filter(fe => fe.id !== id);
+            localStorage.setItem('fixedExpenses', JSON.stringify(fixedExpenses));
+            renderFixedExpenses();
+        }
+
+        function renderFixedExpenses() {
+            const list = document.getElementById('fixedExpenseList');
+            list.innerHTML = '';
+            const freqMap = { 'day': '每日', 'week': '每週', 'month': '每月', 'year': '每年', 'custom': '自訂間距' };
+            fixedExpenses.forEach(fe => {
+                const nextD = new Date(fe.nextDate);
+                const dateStr = `${nextD.getFullYear()}/${String(nextD.getMonth()+1).padStart(2,'0')}/${String(nextD.getDate()).padStart(2,'0')}`;
+                
+                const catColor = getCatColor(fe.category);
+                
+                const isEditing = (editingFeId === fe.id);
+                const btnText = isEditing ? '關閉' : '編輯';
+                const btnBg = isEditing ? 'var(--danger-bg)' : 'var(--btn-sec-bg)';
+                const btnColor = isEditing ? 'var(--danger-text)' : 'var(--btn-sec-text)';
+                
+                let freqText = freqMap[fe.frequency];
+                if (fe.frequency === 'custom') freqText = `每 ${fe.customDays} 天`;
+
+                list.innerHTML += `
+                    <div class="record-card swipeable-card" data-id="fe_${fe.id}" style="margin-top: 10px; margin-bottom: 0;">
+                        <div class="record-delete-action" onclick="deleteFixedExpense(${fe.id})">刪除</div>
+                        <div class="record-content" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-left-color: ${catColor}; gap: 10px;">
+                            <div style="flex: 1; min-width: 0; overflow: hidden;">
+                                <div style="font-weight: bold; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${fe.name} <span style="font-weight: normal; font-size: 14px; color: var(--danger-text-color); margin-left: 4px;">$${fe.amount}</span>
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    ${fe.category} | ${freqText} | 下次: ${dateStr}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
+                                <button style="width:auto; margin:0; padding:6px 12px; font-size: 13px; background:${btnBg}; color:${btnColor}; border-radius:6px;" onclick="editFixedExpense(${fe.id})">${btnText}</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            attachSwipeEvents(); 
+        }
+
+        function toggleBatchMode() {
+            vibe(10);
+            isBatchMode = !isBatchMode;
+            selectedRecords.clear();
+            document.getElementById('batchActionBar').style.display = isBatchMode ? 'block' : 'none';
+            document.getElementById('batchEditPanel').style.display = 'none'; 
+            
+            const btn = document.getElementById('batchModeBtn');
+            if (isBatchMode) {
+                btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                btn.style.background = 'var(--danger-bg)';
+                btn.style.color = 'var(--danger-text)';
+            } else {
+                btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6l2 2 4-4"></path><path d="M3 12l2 2 4-4"></path><path d="M3 18l2 2 4-4"></path></svg>`;
+                btn.style.background = 'var(--btn-sec-bg)';
+                btn.style.color = 'var(--btn-sec-text)';
+            }
+            renderHistory();
+        }
+
+        function toggleRecordSelection(id, e) {
+            if(e) e.stopPropagation();
+            if(selectedRecords.has(id)) {
+                selectedRecords.delete(id);
+            } else {
+                selectedRecords.add(id);
+            }
+            const cb = document.getElementById(`cb_${id}`);
+            if(cb) cb.checked = selectedRecords.has(id);
+            updateBatchCount();
+        }
+
+        function toggleSelectAll(mainCb) {
+            vibe(10);
+            const checkboxes = document.querySelectorAll('.batch-cb');
+            checkboxes.forEach(c => {
+                const id = parseInt(c.dataset.id);
+                if (mainCb.checked) {
+                    selectedRecords.add(id);
+                    c.checked = true;
+                } else {
+                    selectedRecords.delete(id);
+                    c.checked = false;
+                }
+            });
+            updateBatchCount();
+        }
+
+        function updateBatchCount() {
+            document.getElementById('selectedCount').innerText = selectedRecords.size;
+            const visibleCheckboxes = document.querySelectorAll('.batch-cb');
+            if(visibleCheckboxes.length > 0 && selectedRecords.size === visibleCheckboxes.length) {
+                document.getElementById('selectAllCheckbox').checked = true;
+            } else {
+                document.getElementById('selectAllCheckbox').checked = false;
+            }
+        }
+
+        function batchDelete() {
+            if (selectedRecords.size === 0) return alert('請先勾選要刪除的項目');
+            vibe(30);
+            if(confirm(`確定要刪除選取的 ${selectedRecords.size} 筆紀錄嗎？此動作無法復原。`)) {
+                records = records.filter(r => !selectedRecords.has(r.id));
+                localStorage.setItem('expenseRecords', JSON.stringify(records));
+                vibe(50);
+                toggleBatchMode(); 
+                renderStats();
+            }
+        }
+
+        function openBatchEditPanel() {
+            if (selectedRecords.size === 0) return alert('請先勾選要編輯的項目');
+            vibe(10);
+            document.getElementById('batchEditPanel').style.display = 'block';
+            document.getElementById('batchEditPanel').scrollIntoView({behavior: 'smooth'});
+            
+            document.getElementById('batchEditAmt').value = '';
+            document.getElementById('batchEditName').value = '';
+            selectCategory('batchEditCatContainer', '', '-- 不修改分類 --');
+            document.getElementById('batchEditYear').value = '';
+            document.getElementById('batchEditMMDD').value = '';
+            document.getElementById('batchEditTime').value = '';
+            document.getElementById('batchTimeDetails').open = false;
+        }
+
+        function closeBatchEditPanel() {
+            vibe(10);
+            document.getElementById('batchEditPanel').style.display = 'none';
+        }
+
+        function saveBatchEdit(btn) {
+            if (selectedRecords.size === 0) return alert('請先勾選要編輯的項目');
+            
+            const amtStr = document.getElementById('batchEditAmt').value;
+            const nameStr = document.getElementById('batchEditName').value.trim();
+            const cat = document.getElementById('batchEditCatVal').value;
+            const yStr = document.getElementById('batchEditYear').value;
+            const mdStr = document.getElementById('batchEditMMDD').value;
+            const tStr = document.getElementById('batchEditTime').value;
+
+            if(!cat && !yStr && !mdStr && !tStr && !amtStr && !nameStr) return alert("未填寫任何修改內容");
+
+            let updatedCount = 0;
+            records.forEach(r => {
+                if(selectedRecords.has(r.id)) {
+                    if(amtStr) r.amount = parseInt(amtStr);
+                    if(nameStr) r.itemName = nameStr;
+                    if(cat) r.category = cat;
+                    
+                    let d = new Date(r.date);
+                    let newY = yStr ? parseInt(yStr) : d.getFullYear();
+                    let newM = d.getMonth();
+                    let newD = d.getDate();
+                    if(mdStr) {
+                        if (mdStr.length === 3) { newM = parseInt(mdStr.substring(0, 1)) - 1; newD = parseInt(mdStr.substring(1, 3)); } 
+                        else if (mdStr.length >= 4) { newM = parseInt(mdStr.substring(0, 2)) - 1; newD = parseInt(mdStr.substring(2, 4)); }
+                    }
+                    let newH = d.getHours();
+                    let newMin = d.getMinutes();
+                    if(tStr) {
+                        if (tStr.length <= 2) { newH = parseInt(tStr); newMin = 0; } 
+                        else if (tStr.length === 3) { newH = parseInt(tStr.substring(0, 1)); newMin = parseInt(tStr.substring(1, 3)); } 
+                        else { newH = parseInt(tStr.substring(0, tStr.length - 2)); newMin = parseInt(tStr.substring(tStr.length - 2)); }
+                    }
+                    r.date = new Date(newY, newM, newD, newH, newMin).getTime();
+                    updatedCount++;
+                }
+            });
+            
+            if(updatedCount > 0) {
+                localStorage.setItem('expenseRecords', JSON.stringify(records));
+                showBtnSuccess(btn, `✓ 更新 ${updatedCount} 筆`);
+                setTimeout(() => {
+                    toggleBatchMode();
+                    renderStats();
+                }, 1500);
+            }
+        }
+
+        function openHistoryEdit(id) {
+            vibe(10);
+            const r = records.find(x => x.id === id);
+            if(!r) return;
+            
+            editingHistoryId = id;
+            document.getElementById('histEditName').value = r.itemName;
+            document.getElementById('histEditAmt').value = r.amount;
+            selectCategory('histEditCatContainer', r.category, r.category);
+            
+            let d = new Date(r.date);
+            document.getElementById('histEditYear').value = d.getFullYear();
+            document.getElementById('histEditMMDD').value = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            document.getElementById('histEditTime').value = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('historyEditContainer').style.display = 'block';
+            document.getElementById('historyEditContainer').scrollIntoView({behavior: 'smooth'});
+            
+            openedHistoryPanelId = null;
+            renderHistory();
+        }
+
+        function cancelHistoryEdit(idToScroll) {
+            vibe(10);
+            const id = typeof idToScroll === 'number' ? idToScroll : editingHistoryId;
+            editingHistoryId = null;
+            document.getElementById('historyEditContainer').style.display = 'none';
+            if (id) scrollToItem(id);
+        }
+
+        function saveHistoryEdit(btn) {
+            if(!editingHistoryId) return;
+            
+            const name = document.getElementById('histEditName').value.trim();
+            const amt = parseInt(document.getElementById('histEditAmt').value);
+            const cat = document.getElementById('histEditCatVal').value;
+            
+            const yStr = document.getElementById('histEditYear').value;
+            const mdStr = document.getElementById('histEditMMDD').value;
+            const tStr = document.getElementById('histEditTime').value;
+
+            if(!name || !amt) return alert("請完整填寫資訊");
+            const finalTimestamp = parseTimeSegment(yStr, mdStr, tStr);
+            if(!finalTimestamp) return alert("年份與月日為必填項目");
+            
+            const idx = records.findIndex(r => r.id === editingHistoryId);
+            if(idx !== -1) {
+                records[idx].itemName = name;
+                records[idx].amount = amt;
+                records[idx].category = cat;
+                records[idx].date = finalTimestamp;
+                localStorage.setItem('expenseRecords', JSON.stringify(records));
+            }
+            
+            showBtnSuccess(btn); 
+            
+            const savedId = editingHistoryId;
+            setTimeout(() => {
+                cancelHistoryEdit(null); 
+                renderHistory();
+                renderStats();
+                scrollToItem(savedId);
+            }, 500);
+        }
+
+        function scrollToItem(id) {
+            setTimeout(() => {
+                const el = document.getElementById(`record_card_${id}`);
+                if(el) { triggerHighlightWhenVisible(el); }
+            }, 100);
+        }
+
+        function toggleEditPanel(id) {
+            vibe(10);
+            if (openedHistoryPanelId === id) { openedHistoryPanelId = null; } 
+            else { openedHistoryPanelId = id; }
+            document.querySelectorAll('.record-edit-panel').forEach(p => p.classList.remove('show'));
+            if(openedHistoryPanelId) {
+                let panel = document.getElementById(`editPanel_${id}`);
+                if(panel) panel.classList.add('show');
+            }
+        }
+
+        function updateStarScore(id, score) {
+            vibe(20);
+            const idx = records.findIndex(r => r.id === id);
+            if(idx !== -1) {
+                records[idx].score = score;
+                localStorage.setItem('expenseRecords', JSON.stringify(records));
+                renderStats(); renderHistory(); 
+            }
+        }
+
+        function renderHistory() {
+            const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
+            const catFilter = document.getElementById('filterCatVal').value; 
+            const timeFilter = document.getElementById('filterTimeHistoryVal').value;
+            const includeUnrated = document.getElementById('includeUnrated').checked;
+            const minScore = parseInt(document.getElementById('filterMin').value);
+            const maxScore = parseInt(document.getElementById('filterMax').value);
+            const startDateStr = document.getElementById('filterStartDate').value;
+            const endDateStr = document.getElementById('filterEndDate').value;
+            
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+            let total = 0;
+            const now = new Date();
+
+            let isSelectAll = isBatchMode && document.getElementById('selectAllCheckbox').checked;
+            if (isSelectAll) selectedRecords.clear(); 
+
+            [...records].sort((a, b) => b.date - a.date).forEach(r => {
+                const s = r.score;
+                const rDate = new Date(r.date);
+                
+                if(keyword && !r.itemName.toLowerCase().includes(keyword)) return;
+                if(catFilter !== 'all' && r.category !== catFilter) return;
+                
+                if (s === null) { if(!includeUnrated) return; } 
+                else { if(s < minScore || s > maxScore) return; }
+                
+                if (timeFilter === 'week') {
+                    if ((now - rDate) / 86400000 > 7) return;
+                } else if (timeFilter === 'month') {
+                    if (rDate.getMonth() !== now.getMonth() || rDate.getFullYear() !== now.getFullYear()) return;
+                } else if (timeFilter === 'custom') {
+                    if (startDateStr) { const startTs = new Date(startDateStr + "T00:00:00").getTime(); if (r.date < startTs) return; }
+                    if (endDateStr) { const endTs = new Date(endDateStr + "T23:59:59").getTime(); if (r.date > endTs) return; }
+                }
+
+                if (isSelectAll) selectedRecords.add(r.id);
+                total += r.amount;
+                
+                const dateString = `${rDate.getFullYear()}/${String(rDate.getMonth()+1).padStart(2, '0')}/${String(rDate.getDate()).padStart(2, '0')} ${String(rDate.getHours()).padStart(2, '0')}:${String(rDate.getMinutes()).padStart(2, '0')}`;
+                
+                const sText = s === null ? '~' : s; 
+                const sClass = s === null ? 'unrated' : '';
+                const catColor = getCatColor(r.category);
+                
+                const isChecked = selectedRecords.has(r.id) ? 'checked' : '';
+
+                const card = document.createElement('div');
+                card.id = `record_card_${r.id}`;
+                card.className = 'record-card swipeable-card';
+                card.innerHTML = `
+                    <div class="record-delete-action" onclick="deleteItem(${r.id})">刪除</div>
+                    <div class="record-content" style="border-left-color: ${catColor};">
+                        <div class="record-display" onclick="${isBatchMode ? `toggleRecordSelection(${r.id}, event)` : `toggleEditPanel(${r.id})`}" style="display: flex; align-items: center;">
+                            ${isBatchMode ? `<input type="checkbox" class="batch-cb" id="cb_${r.id}" data-id="${r.id}" ${isChecked} onclick="toggleRecordSelection(${r.id}, event)" style="margin-right: 12px; width: 22px; height: 22px; flex-shrink: 0; pointer-events: none;">` : ''}
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="record-header">
+                                    <strong class="text-nowrap" style="flex: 1; margin-right: 10px;">${r.itemName}</strong>
+                                    <span style="font-size: 18px; font-weight: bold; color: var(--text-color); text-align: right; flex-shrink: 0;">$${r.amount}</span>
+                                </div>
+                                <div class="record-meta">
+                                    <span>${dateString}</span>
+                                    <div style="display: flex; gap: 6px;">
+                                        <span class="badge badge-cat" style="background-color: var(--highlight-bg); color: var(--text-color); border: 1px solid var(--border-color);">
+                                            <span class="cat-dot" style="background:${catColor}; width:10px; height:10px; margin-right:4px;"></span>${r.category}
+                                        </span>
+                                        <span class="badge badge-score ${sClass}">★ ${sText}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="record-edit-panel ${openedHistoryPanelId === r.id && !isBatchMode ? 'show' : ''}" id="editPanel_${r.id}" onclick="event.stopPropagation()">
+                            <div style="display:flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%;">
+                                <div style="flex: 1; overflow: hidden; display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size:12px; color:var(--text-muted); white-space:nowrap;">滿意度:</span>
+                                    ${generateStarsHtml(s, r.id)}
+                                    <button class="lock-btn" onclick="resetScore(${r.id})" style="color: var(--text-muted); background: var(--card-bg); border-radius: 6px; padding: 4px 8px; flex-shrink: 0; font-size: 14px; margin-left: 2px;" title="重置為未評分">↺</button>
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                                    <button style="width:auto; margin:0; padding:6px 12px; font-size: 13px; background:var(--btn-sec-bg); color:var(--btn-sec-text); border-radius:6px;" onclick="openHistoryEdit(${r.id})">編輯</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('filteredTotal').innerText = `篩選加總: $${total}`;
+            
+            if (isBatchMode) updateBatchCount();
+            attachSwipeEvents();
+        }
+
+        function resetScore(id) {
+            vibe(10);
+            const idx = records.findIndex(r => r.id === id);
+            if(idx !== -1) { records[idx].score = null; localStorage.setItem('expenseRecords', JSON.stringify(records)); renderHistory(); renderStats(); }
+        }
+
+        function attachSwipeEvents() {
+            const contents = document.querySelectorAll('.swipeable-card .record-content');
+            contents.forEach(content => {
+                let startX = 0, startY = 0, isDragging = false, directionLocked = false;
+                content.addEventListener('touchstart', (e) => {
+                    if(isBatchMode) return;
+                    if(content.parentElement.dataset.locked === 'true' || content.dataset.locked === 'true') return; 
+                    if(document.querySelectorAll('.select-arrow-active').length > 0) return;
+                    if(e.target.closest('.record-edit-panel') || e.target.closest('.no-swipe')) return; 
+                    if(e.target.type === 'range' || e.target.type === 'color' || e.target.closest('.custom-select') || e.target.tagName === 'BUTTON') return;
+                    
+                    if (currentlyOpenSwipe && currentlyOpenSwipe !== content) { currentlyOpenSwipe.style.transform = 'translateX(0px)'; currentlyOpenSwipe = null; }
+                    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                    isDragging = true; directionLocked = false; content.style.transition = 'none';
+                }, { passive: true });
+                content.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    let diffX = e.touches[0].clientX - startX; let diffY = e.touches[0].clientY - startY;
+                    if (!directionLocked) {
+                        if (Math.abs(diffX) > Math.abs(diffY)) { directionLocked = true; } else { isDragging = false; return; }
+                    }
+                    if (Math.abs(diffX) > 10) {
+                        if (e.cancelable) e.preventDefault(); 
+                        let moveX = diffX < 0 ? diffX : 0; if (moveX < -100) moveX = -100; 
+                        content.style.transform = `translateX(${moveX}px)`;
+                    }
+                }, { passive: false }); 
+                content.addEventListener('touchend', (e) => {
+                    if(!isDragging) return; isDragging = false; content.style.transition = 'transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+                    let diffX = e.changedTouches[0].clientX - startX;
+                    if (diffX < -50) { 
+                        content.style.transform = 'translateX(-80px)'; currentlyOpenSwipe = content; vibe([30, 30]); 
+                    } else { content.style.transform = 'translateX(0px)'; }
+                });
+            });
+        }
+
+        function deleteItem(id) {
+            vibe(50);
+            records = records.filter(r => r.id !== id);
+            localStorage.setItem('expenseRecords', JSON.stringify(records));
+            renderHistory(); renderStats();
+        }
+
+        function renderStats() {
+            const range = document.getElementById('timeRangeVal').value; 
+            const now = new Date();
+            const t0 = { total: 0, cats: {}, tScore: 0, cScore: 0 };
+            
+            let chartDays = []; let chartTitle = '';
+            
+            // 加入自訂月份的變數支援
+            let targetYear = now.getFullYear();
+            let targetMonth = now.getMonth();
+
+            if(range === 'week') {
+                chartTitle = '近 7 日花費趨勢';
+                for(let i=6; i>=0; i--) {
+                    let d = new Date(now.getTime() - i*86400000);
+                    chartDays.push({ labelTop: '', labelBottom: `${d.getMonth()+1}/${d.getDate()}`, start: new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), end: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59).getTime(), total: 0 });
+                }
+            } else if (range === 'month') {
+                chartTitle = '本月花費趨勢';
+                let daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+                for(let i=1; i<=daysInMonth; i++) {
+                    let labelBottom = (i === 1 || i === 10 || i === 20 || i === daysInMonth) ? `${targetMonth+1}月<br>${i}日` : '';
+                    chartDays.push({ labelTop: '', labelBottom: labelBottom, start: new Date(targetYear, targetMonth, i).getTime(), end: new Date(targetYear, targetMonth, i, 23, 59, 59).getTime(), total: 0 });
+                }
+            } else if (range === 'custom_month') {
+                // 抓取自訂年月輸入框的值
+                const yVal = parseInt(document.getElementById('statCustomYear').value);
+                const mVal = parseInt(document.getElementById('statCustomMonth').value);
+                if (!isNaN(yVal) && !isNaN(mVal) && mVal >= 1 && mVal <= 12) {
+                    targetYear = yVal;
+                    targetMonth = mVal - 1;
+                }
+                chartTitle = `${targetYear}年${targetMonth + 1}月花費趨勢`;
+                let daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+                for(let i=1; i<=daysInMonth; i++) {
+                    let labelBottom = (i === 1 || i === 10 || i === 20 || i === daysInMonth) ? `${targetMonth+1}月<br>${i}日` : '';
+                    chartDays.push({ labelTop: '', labelBottom: labelBottom, start: new Date(targetYear, targetMonth, i).getTime(), end: new Date(targetYear, targetMonth, i, 23, 59, 59).getTime(), total: 0 });
+                }
+            }
+
+            records.forEach(r => {
+                const rDate = new Date(r.date); let match = false;
+                // 更新比對邏輯，支援自訂月份
+                if(range === 'month' || range === 'custom_month') { 
+                    if(rDate.getMonth() === targetMonth && rDate.getFullYear() === targetYear) match = true; 
+                } else { 
+                    if((now - rDate) / 86400000 <= 7) match = true; 
+                }
+                
+                if(match) {
+                    t0.total += r.amount; t0.cats[r.category] = (t0.cats[r.category] || 0) + r.amount;
+                    if(r.score !== null) { t0.tScore += r.score; t0.cScore++; }
+                }
+                chartDays.forEach(day => { if(r.date >= day.start && r.date <= day.end) day.total += r.amount; });
+            });
+
+            document.getElementById('totalSpend').innerText = `$${t0.total}`;
+            document.getElementById('avgScore').innerText = `平均評分: ${t0.cScore > 0 ? (t0.tScore/t0.cScore).toFixed(1) : '-'} 星`;
+            document.getElementById('chartTitle').innerText = chartTitle;
+            
+            const budgetCard = document.getElementById('budgetCard');
+            if(monthlyBudget > 0) {
+                budgetCard.style.display = 'block';
+                let currentMonthTotal = 0;
+                // 預算使用率同步支援目標月份
+                records.forEach(r => { let d = new Date(r.date); if(d.getMonth() === targetMonth && d.getFullYear() === targetYear) currentMonthTotal += r.amount; });
+                document.getElementById('budgetLabel').innerText = `$${currentMonthTotal} / $${monthlyBudget}`;
+                let pct = (currentMonthTotal / monthlyBudget) * 100;
+                let fillEl = document.getElementById('budgetFill');
+                fillEl.style.width = Math.min(pct, 100) + '%';
+                if (pct > 100) fillEl.style.backgroundColor = 'var(--danger-bg)';
+                else if (pct > 80) fillEl.style.backgroundColor = '#ffc107';
+                else fillEl.style.backgroundColor = '#28a745';
+            } else { budgetCard.style.display = 'none'; }
+
+            const catBox = document.getElementById('categoryStats');
+            catBox.innerHTML = '<h4>各分類明細</h4>';
+            if(t0.total === 0) {
+                document.getElementById('donutChart').style.background = 'var(--border-color)';
+            } else {
+                let conicParts = [], curDeg = 0;
+                Object.entries(t0.cats).sort((a,b)=>b[1]-a[1]).forEach(([name, amt]) => {
+                    const pct = (amt/t0.total) * 100; const c = getCatColor(name);
+                    conicParts.push(`${c} ${curDeg}% ${curDeg + pct}%`); curDeg += pct;
+                    catBox.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:12px;"><div style="display:flex; align-items:center; gap:8px; min-width:0;"><div style="width:12px; height:12px; border-radius:50%; background:${c}; flex-shrink:0;"></div><span class="text-nowrap" style="color: var(--text-color);">${name}</span></div><strong style="color: var(--text-color); flex-shrink:0;">$${amt} <span style="color:var(--text-muted); font-size:12px; font-weight:normal;">(${pct.toFixed(1)}%)</span></strong></div>`;
+                });
+                document.getElementById('donutChart').style.background = `conic-gradient(${conicParts.join(', ')})`;
+            }
+
+            let maxDaily = Math.max(...chartDays.map(d => d.total)); if(maxDaily === 0) maxDaily = 1; 
+            const barHtml = chartDays.map(day => {
+                let pct = (day.total / maxDaily) * 100;
+                let amtDisplay = (range === 'week' && day.total > 0) ? `$${day.total}` : ''; 
+                return `
+                    <div class="bar-col">
+                        <div class="bar-label-top">${amtDisplay}</div>
+                        <div class="bar-track"><div class="bar-fill" style="height:${pct}%;"></div></div>
+                        <div class="bar-label-bottom">${day.labelBottom}</div>
+                    </div>`;
+            }).join('');
+            document.getElementById('barChartContainer').innerHTML = barHtml;
+        }
+
+        function toggleCatSettingsLock(btn) {
+            vibe(10);
+            isCatSettingsLocked = !isCatSettingsLocked;
+            if (isCatSettingsLocked) {
+                btn.innerText = '🔒';
+                btn.classList.remove('unlocked');
+            } else {
+                btn.innerText = '🔓';
+                btn.classList.add('unlocked');
+            }
+            renderSettingsCategories();
+        }
+
+        function showColorInput(catName) {
+            document.getElementById(`catColorBlock_${catName}`).style.display = 'none';
+            const input = document.getElementById(`catColorInput_${catName}`);
+            input.style.display = 'block';
+            input.focus();
+            vibe(10);
+        }
+
+        function updateCatColor(catName, colorHex) {
+            if(/^#[0-9A-Fa-f]{6}$/i.test(colorHex)){
+                document.getElementById(`catColorBlock_${catName}`).style.background = colorHex;
+            }
+            document.getElementById(`catColorInput_${catName}`).style.display = 'none';
+            document.getElementById(`catColorBlock_${catName}`).style.display = 'block';
+        }
+
+        function updateCategoryColor(catName, colorHex) {
+            const idx = categories.findIndex(c => c.name === catName);
+            if(idx !== -1) {
+                categories[idx].color = colorHex;
+                localStorage.setItem('expenseCategories', JSON.stringify(categories));
+                buildCategoryDropdowns(); renderHistory(); renderStats(); renderFixedExpenses(); renderSettingsCategories();
+            }
+        }
+
+        function addCategory(btn) {
+            const val = document.getElementById('newCategory').value.trim();
+            const color = document.getElementById('newCatColorText').value;
+            if(!val || categories.some(c => c.name === val)) return;
+            categories.push({name: val, color: color}); 
+            localStorage.setItem('expenseCategories', JSON.stringify(categories));
+            document.getElementById('newCategory').value = '';
+            showBtnSuccess(btn);
+            buildCategoryDropdowns(); renderSettingsCategories(); renderHistory(); 
+        }
+
+        function deleteCategory(catName) {
+            vibe(30);
+            if(records.some(r => r.category === catName)) return alert('此分類尚有紀錄，無法刪除！');
+            categories = categories.filter(c => c.name !== catName);
+            localStorage.setItem('expenseCategories', JSON.stringify(categories));
+            buildCategoryDropdowns(); renderSettingsCategories(); renderHistory(); 
+        }
+
+        function renderSettingsCategories() {
+            const list = document.getElementById('categoryList');
+            const addSection = document.getElementById('addCategorySection');
+            
+            if (isCatSettingsLocked) {
+                addSection.style.display = 'none';
+                list.innerHTML = categories.map(cat => `
+                    <div class="record-card swipeable-card" data-locked="true" style="margin-bottom: 8px;">
+                        <div class="record-delete-action" onclick="deleteCategory('${cat.name}')">刪除</div>
+                        <div class="record-content" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; color: var(--text-color); border-left-color: ${cat.color};">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="cat-dot" style="background:${cat.color}; width: 16px; height: 16px; border: 1px solid var(--border-color);"></span>
+                                <span class="text-nowrap">${cat.name}</span>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            } else {
+                addSection.style.display = 'flex';
+                list.innerHTML = categories.map(cat => `
+                    <div class="record-card swipeable-card" style="margin-bottom: 8px;">
+                        <div class="record-delete-action" onclick="deleteCategory('${cat.name}')">刪除</div>
+                        <div class="record-content" style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; color: var(--text-color); gap: 10px; flex-wrap: nowrap; border-left-color: ${cat.color};">
+                            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                                <div id="catColorBlock_${cat.name}" class="cat-dot" style="background:${cat.color}; width: 24px; height: 24px; cursor: pointer; border: 1px solid var(--border-color); flex-shrink: 0;" onclick="showColorInput('${cat.name}')"></div>
+                                <input type="text" id="catColorInput_${cat.name}" value="${cat.color}" maxlength="7" style="display: none; width: 80px; padding: 4px; margin: 0; font-family: monospace; text-align: center; font-size: 14px; border-radius: 6px; flex-shrink: 0;" onblur="updateCatColor('${cat.name}', this.value)" onkeydown="if(event.key==='Enter') this.blur()">
+                                <input type="text" id="catNameInput_${cat.name}" value="${cat.name}" style="flex: 1; min-width: 0; padding: 6px; margin: 0; font-size: 14px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px;">
+                            </div>
+                            <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                                <button class="btn-warning" style="margin:0; padding:6px 12px; font-size: 13px;" onclick="saveCatEdit('${cat.name}', this)">儲存</button>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            }
+            attachSwipeEvents();
+        }
+
+        function saveCatEdit(oldName, btn) {
+            const newName = document.getElementById(`catNameInput_${oldName}`).value.trim();
+            const newColor = document.getElementById(`catColorInput_${oldName}`).value.trim();
+            
+            if(!newName || !/^#[0-9A-Fa-f]{6}$/i.test(newColor)) return alert("名稱不可空白，色號需為 #XXXXXX 格式");
+            if(newName !== oldName && categories.some(c => c.name === newName)) return alert("分類名稱已存在！");
+            
+            const idx = categories.findIndex(c => c.name === oldName);
+            if(idx !== -1) { categories[idx].name = newName; categories[idx].color = newColor; }
+            
+            if(newName !== oldName) {
+                records.forEach(r => { if(r.category === oldName) r.category = newName; });
+                fixedExpenses.forEach(fe => { if(fe.category === oldName) fe.category = newName; });
+                localStorage.setItem('expenseRecords', JSON.stringify(records));
+                localStorage.setItem('fixedExpenses', JSON.stringify(fixedExpenses));
+            }
+            
+            localStorage.setItem('expenseCategories', JSON.stringify(categories));
+            showBtnSuccess(btn); 
+            
+            buildCategoryDropdowns(); renderHistory(); renderStats(); renderFixedExpenses();
+            
+            setTimeout(() => {
+                renderSettingsCategories();
+            }, 1500);
+        }
+
+        function exportData() {
+            vibe(10);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({records, categories, fixedExpenses}, null, 2)], { type: 'application/json' }));
+            a.download = `money_v23_backup.json`; a.click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.records && data.categories) {
+                        if(confirm('警告：還原資料將完全覆蓋目前的帳本，確定要繼續嗎？')) {
+                            records = data.records; categories = data.categories; fixedExpenses = data.fixedExpenses || [];
+                            localStorage.setItem('expenseRecords', JSON.stringify(records));
+                            localStorage.setItem('expenseCategories', JSON.stringify(categories));
+                            localStorage.setItem('fixedExpenses', JSON.stringify(fixedExpenses));
+                            vibe([30,50]); alert('資料匯入成功！系統將重新整理套用設定。'); location.reload(); 
+                        }
+                    } else { alert('JSON 格式不正確或檔案損毀。'); }
+                } catch(err) { alert('檔案解析失敗，請確認這是否為本 App 匯出的備份檔。'); }
+                document.getElementById('importFile').value = '';
+            };
+            reader.readAsText(file);
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker 註冊成功'))
+                    .catch(err => console.log('Service Worker 註冊失敗', err));
+            });
+        }
+    </script>
+</body>
+</html>
